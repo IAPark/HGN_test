@@ -26,6 +26,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import edu.kent.cs.aisp.hgn_test.findeye.FindEye;
+import edu.kent.cs.aisp.hgn_test.findeye.FindEyeCenter;
+import edu.kent.cs.aisp.hgn_test.findeye.FindFace;
+
 
 public class HGN_Test extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -39,7 +43,8 @@ public class HGN_Test extends AppCompatActivity implements CameraBridgeViewBase.
     }
 
     private CameraBridgeViewBase mOpenCvCameraView;
-    CascadeClassifier face_classifier;
+    FindFace face_finder;
+    FindEye eye_finder;
 
 
     @Override
@@ -75,23 +80,8 @@ public class HGN_Test extends AppCompatActivity implements CameraBridgeViewBase.
         mOpenCvCameraView.setCvCameraViewListener(this);
         mOpenCvCameraView.enableView();
 
-        try {
-            InputStream is = getResources().openRawResource(R.raw.lbpcascade_frontalface);
-            File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
-            File mCascadeFile = new File(cascadeDir, "haarcascade_frontalface_default.xml");
-            FileOutputStream os = new FileOutputStream(mCascadeFile);
-
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while ((bytesRead = is.read(buffer)) != -1) {
-                os.write(buffer, 0, bytesRead);
-            }
-            is.close();
-            os.close();
-            face_classifier =  new CascadeClassifier(mCascadeFile.getAbsolutePath());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        face_finder = new FindFace(this);
+        eye_finder = new FindEye(this);
     }
 
     @Override
@@ -115,12 +105,28 @@ public class HGN_Test extends AppCompatActivity implements CameraBridgeViewBase.
     }
 
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        MatOfRect faces = new MatOfRect();
-        face_classifier.detectMultiScale(inputFrame.gray(), faces, 1.5, 2, 0, new Size(50,50),new Size(400,400));
+        FindEyeCenter eye_center_finder = new FindEyeCenter();
+
+
+        MatOfRect faces = face_finder.find(inputFrame.gray());
+        MatOfRect eyes = eye_finder.find(inputFrame.gray());
+
+
         Mat frame =  inputFrame.rgba();
         for (Rect rect : faces.toArray()) {
             Imgproc.rectangle(frame, new Point(rect.x, rect.y),
                     new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 255, 0));
+        }
+
+        for (Rect rect : eyes.toArray()) {
+            Imgproc.rectangle(frame, new Point(rect.x, rect.y),
+                    new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0));
+
+            MatOfRect eye_centers = eye_center_finder.find(inputFrame.gray().submat(rect));
+            for (Rect eye : eye_centers.toArray()) {
+                Imgproc.circle(frame, new Point(eye.x, eye.y), 5, new Scalar(0, 0, 355));
+            }
+
         }
         return frame;
     }
