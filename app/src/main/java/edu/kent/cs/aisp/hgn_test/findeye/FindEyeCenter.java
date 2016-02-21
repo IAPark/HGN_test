@@ -7,7 +7,6 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfRect;
-import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
@@ -53,11 +52,13 @@ public class FindEyeCenter implements Finder{
         return computeGradientX(mat.t()).t();
     }
 
-    private native Point find_point(Mat image);
+    private native int find_point(long image_native_address, long point_address);
 
 
     @Override
     public MatOfRect find(Mat image) {
+
+        Log.i("test", Integer.toString(find_point(0, 0)));
 
         Mat x_gradient = computeGradientX(image);
         Mat y_gradient = computeGradientY(image);
